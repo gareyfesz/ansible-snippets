@@ -6,7 +6,7 @@
   vars:
     netbox_url: "{{ lookup('env','NETBOX_URL') }}"
     netbox_token: "{{ lookup('env','NETBOX_TOKEN') }}"
-    intended_configs_root: ~/Desktop/ansible-eos-pcsd/configs
+    intended_configs_root: ~/somewhere/that/exists
   gather_facts: no
   connection: local
 
