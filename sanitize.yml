@@ -1,0 +1,42 @@
+# PULL RENDERED CONFIG FROM NETBOX FOR DEFINED HOSTS
+# RUN THIS WITH THE NETBOX_INVENTORY FILE IF NOT SPECIFIED GLOBALLY
+
+- hosts: all
+
+  vars:
+    netbox_url: "{{ lookup('env','NETBOX_URL') }}"
+    netbox_token: "{{ lookup('env','NETBOX_TOKEN') }}"
+    intended_configs_root: ~/Desktop/ansible-eos-pcsd/configs
+  gather_facts: no
+  connection: local
+
+  tasks:
+    - name: 1 - Get device details from NetBox
+      ansible.builtin.uri:
+        url: "{{ netbox_url }}/api/dcim/devices/?name={{ inventory_hostname }}"
+        method: GET
+        return_content: yes
+        headers:
+          accept: "application/json"
+          Authorization: "Token {{ netbox_token }}"
+      register: device
+      failed_when:
+        - device.status != 200
+        - device.json.results | length == 0
+
+    - name: 2 - Get intended state from NetBox based on device ID from play 1
+      ansible.builtin.uri:
+        url: "{{ netbox_url }}/api/dcim/devices/{{ device.json.results[0].id }}/render-config/"
+        method: POST  
+        return_content: yes
+        headers:
+          accept: "application/json"
+          Authorization: "Token {{ netbox_token }}"
+      register: intended_config
+      when: device.json.results | length > 0
+
+    - name: 3 - write rendered config to chosen folder
+      ansible.builtin.copy:
+        content: "{{ intended_config.json.content | default('') }}"
+        dest: "{{ intended_configs_root }}/{{ inventory_hostname }}.txt"
+      when: intended_config.json.content is defined
